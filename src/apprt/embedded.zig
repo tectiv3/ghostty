@@ -1049,6 +1049,22 @@ pub const Surface = struct {
         width: f64,
         height: f64,
     ) void {
+        // We are an embedded API so the caller can send us all sorts of
+        // garbage. NaN never compares equal, so it defeats the eql dedup
+        // below and the renderer's shader bounds test, and non-positive
+        // sizes are meaningless. Drop the update entirely.
+        if (std.math.isNan(x) or std.math.isNan(y) or std.math.isNan(width) or
+            std.math.isNan(height) or std.math.isInf(x) or std.math.isInf(y) or
+            std.math.isInf(width) or std.math.isInf(height) or width <= 0 or
+            height <= 0)
+        {
+            log.err(
+                "invalid window geometry x={} y={} width={} height={}",
+                .{ x, y, width, height },
+            );
+            return;
+        }
+
         // Runtimes sometimes generate superfluous events even if the
         // geometry did not actually change (SwiftUI). We check that it
         // actually changed from what we last recorded since resizes are
