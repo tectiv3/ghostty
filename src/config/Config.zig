@@ -715,10 +715,11 @@ foreground: Color = .{ .r = 0xFF, .g = 0xFF, .b = 0xFF },
 ///    each split (terminal) individually. This is the default and matches
 ///    the historical behavior: each split shows its own copy of the image.
 ///
-///  * `window` - the background image is sized and positioned relative to
-///    the window as a whole, so it appears as a single continuous image
-///    behind every split in the window. Each split renders the portion of
-///    the image that falls within it.
+///  * `window` - (macOS only) the background image is sized and positioned
+///    relative to the window as a whole, so it appears as a single
+///    continuous image behind every split in the window. Each split renders
+///    the portion of the image that falls within it. On non-macOS platforms,
+///    this behaves the same as `split`.
 ///
 /// Available since 1.4.0.
 @"background-image-scope": BackgroundImageScope = .split,
