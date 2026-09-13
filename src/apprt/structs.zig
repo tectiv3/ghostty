@@ -34,6 +34,23 @@ pub const IMEPos = struct {
     height: f64,
 };
 
+/// The geometry of a surface relative to the window it is displayed in.
+pub const WindowGeometry = struct {
+    /// The origin of the surface within the window content area, in pixels,
+    /// with the origin at the top-left of the window.
+    x: f64,
+    y: f64,
+
+    /// The size of the window content area in pixels.
+    width: f64,
+    height: f64,
+
+    pub fn eql(self: *const WindowGeometry, other: *const WindowGeometry) bool {
+        return self.x == other.x and self.y == other.y and
+            self.width == other.width and self.height == other.height;
+    }
+};
+
 /// The clipboard type.
 ///
 /// If this is changed, you must also update ghostty.h

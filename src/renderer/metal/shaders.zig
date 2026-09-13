@@ -298,6 +298,15 @@ pub const BgImage = extern struct {
     opacity: f32 align(4),
     info: Info align(1),
 
+    /// The size the background image is sized/positioned against, in
+    /// pixels. The screen size for split scope, the window size for
+    /// window scope.
+    window_size: [2]f32 align(8),
+
+    /// This surface's origin within the window, in pixels, top-left
+    /// origin. Always zero for split scope.
+    surface_origin: [2]f32 align(8),
+
     pub const Info = packed struct(u8) {
         position: Position,
         fit: Fit,
@@ -323,6 +332,16 @@ pub const BgImage = extern struct {
             none = 3,
         };
     };
+
+    test {
+        // The layout is mirrored in the shaders, so we test it in order
+        // to be aware of any changes.
+        try std.testing.expectEqual(24, @sizeOf(BgImage));
+        try std.testing.expectEqual(0, @offsetOf(BgImage, "opacity"));
+        try std.testing.expectEqual(4, @offsetOf(BgImage, "info"));
+        try std.testing.expectEqual(8, @offsetOf(BgImage, "window_size"));
+        try std.testing.expectEqual(16, @offsetOf(BgImage, "surface_origin"));
+    }
 };
 
 /// Initialize the MTLLibrary. A MTLLibrary is a collection of shaders.

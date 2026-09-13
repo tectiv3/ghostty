@@ -4,6 +4,8 @@ layout(binding = 0) uniform sampler2D image;
 
 layout(location = 0) in float in_opacity;
 layout(location = 1) in uint info;
+layout(location = 2) in vec2 in_window_size;
+layout(location = 3) in vec2 in_surface_origin;
 
 // 4 bits of info.
 const uint BG_IMAGE_POSITION = 15u;
@@ -63,7 +65,7 @@ void main() {
 
     repeat = info & BG_IMAGE_REPEAT;
 
-    vec2 screen_size = screen_size;
+    vec2 screen_size = in_window_size;
     vec2 tex_size = textureSize(image, 0);
 
     vec2 dest_size = tex_size;
@@ -131,7 +133,7 @@ void main() {
         } break;
     }
 
-    offset = dest_offset;
+    offset = dest_offset - in_surface_origin;
     scale = tex_size / dest_size;
 
     // We load a fully opaque version of the bg color and combine it with

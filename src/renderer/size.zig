@@ -234,6 +234,19 @@ pub const ScreenSize = extern struct {
     }
 };
 
+/// The position and size of a surface within its window, in pixels.
+/// Used by rendering features that are scoped to the window, such as
+/// `background-image-scope = window`.
+pub const WindowGeometry = struct {
+    /// Origin of the surface's top-left within the window content area.
+    x: f32,
+    y: f32,
+
+    /// Size of the window content area.
+    width: f32,
+    height: f32,
+};
+
 /// The dimensions of the grid itself, in rows/columns units.
 pub const GridSize = extern struct {
     pub const Unit = terminal_size.CellCountInt;

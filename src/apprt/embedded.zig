@@ -451,6 +451,7 @@ pub const Surface = struct {
     core_surface: CoreSurface,
     content_scale: apprt.ContentScale,
     size: apprt.SurfaceSize,
+    window_geometry: apprt.WindowGeometry,
     cursor_pos: apprt.CursorPos,
     inspector: ?*Inspector = null,
 
@@ -512,6 +513,7 @@ pub const Surface = struct {
                 .y = @floatCast(opts.scale_factor),
             },
             .size = .{ .width = 800, .height = 600 },
+            .window_geometry = .{ .x = 0, .y = 0, .width = 0, .height = 0 },
             .cursor_pos = .{ .x = -1, .y = -1 },
         };
 
@@ -1036,6 +1038,34 @@ pub const Surface = struct {
         // Call the primary callback.
         self.core_surface.sizeCallback(self.size) catch |err| {
             log.err("error in size callback err={}", .{err});
+            return;
+        };
+    }
+
+    pub fn updateWindowGeometry(
+        self: *Surface,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+    ) void {
+        // Runtimes sometimes generate superfluous events even if the
+        // geometry did not actually change (SwiftUI). We check that it
+        // actually changed from what we last recorded since resizes are
+        // expensive.
+        const geometry: apprt.WindowGeometry = .{
+            .x = x,
+            .y = y,
+            .width = width,
+            .height = height,
+        };
+        if (self.window_geometry.eql(&geometry)) return;
+
+        self.window_geometry = geometry;
+
+        // Call the primary callback.
+        self.core_surface.windowGeometryCallback(self.window_geometry) catch |err| {
+            log.err("error in window geometry callback err={}", .{err});
             return;
         };
     }
@@ -1955,6 +1985,18 @@ pub const CAPI = struct {
     /// to the pty and the renderer.
     export fn ghostty_surface_set_size(surface: *Surface, w: u32, h: u32) void {
         surface.updateSize(w, h);
+    }
+
+    /// Update the position and size of a surface within its window. This is
+    /// used by window-scoped rendering such as background images.
+    export fn ghostty_surface_set_window_geometry(
+        surface: *Surface,
+        x: f64,
+        y: f64,
+        w: f64,
+        h: f64,
+    ) void {
+        surface.updateWindowGeometry(x, y, w, h);
     }
 
     /// Return the size information a surface has.

@@ -707,6 +707,22 @@ foreground: Color = .{ .r = 0xFF, .g = 0xFF, .b = 0xFF },
 /// Available since: 1.2.0
 @"background-image-repeat": bool = false,
 
+/// Background image scope.
+///
+/// Valid values are:
+///
+///  * `split` - the background image is sized and positioned relative to
+///    each split (terminal) individually. This is the default and matches
+///    the historical behavior: each split shows its own copy of the image.
+///
+///  * `window` - the background image is sized and positioned relative to
+///    the window as a whole, so it appears as a single continuous image
+///    behind every split in the window. Each split renders the portion of
+///    the image that falls within it.
+///
+/// Available since 1.4.0.
+@"background-image-scope": BackgroundImageScope = .split,
+
 /// The foreground and background color for selection. If this is not set, then
 /// the selection color is just the inverted window background and foreground
 /// (note: not to be confused with the cell bg/fg).
@@ -9828,6 +9844,12 @@ pub const BackgroundImageFit = enum {
     cover,
     stretch,
     none,
+};
+
+/// See background-image-scope
+pub const BackgroundImageScope = enum {
+    split,
+    window,
 };
 
 /// See freetype-load-flag

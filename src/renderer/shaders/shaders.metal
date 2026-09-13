@@ -240,6 +240,8 @@ fragment float4 bg_color_fragment(
 struct BgImageVertexIn {
   float opacity [[attribute(0)]];
   uint8_t info [[attribute(1)]];
+  float2 window_size [[attribute(2)]];
+  float2 surface_origin [[attribute(3)]];
 };
 
 enum BgImagePosition : uint8_t {
@@ -313,7 +315,7 @@ vertex BgImageVertexOut bg_image_vertex(
 
   out.repeat = (in.info & BG_IMAGE_REPEAT) == BG_IMAGE_REPEAT;
 
-  float2 screen_size = uniforms.screen_size;
+  float2 screen_size = in.window_size;
   float2 tex_size = float2(image.get_width(), image.get_height());
 
   float2 dest_size = tex_size;
@@ -381,7 +383,7 @@ vertex BgImageVertexOut bg_image_vertex(
     } break;
   }
 
-  out.offset = dest_offset;
+  out.offset = dest_offset - in.surface_origin;
   out.scale = tex_size / dest_size;
 
   // We load a fully opaque version of the bg color and combine it with

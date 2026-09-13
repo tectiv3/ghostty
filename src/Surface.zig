@@ -135,6 +135,15 @@ inspector: ?*inspectorpkg.Inspector = null,
 /// All our sizing information.
 size: rendererpkg.Size,
 
+/// The geometry of this surface within its window. Used by window-scoped
+/// rendering such as background images.
+window_geometry: apprt.WindowGeometry = .{
+    .x = 0,
+    .y = 0,
+    .width = 0,
+    .height = 0,
+},
+
 /// The configuration derived from the main config. We "derive" it so that
 /// we don't have a shared pointer hanging around that we need to worry about
 /// the lifetime of. This makes updating config at runtime easier.
@@ -2493,6 +2502,26 @@ pub fn sizeCallback(self: *Surface, size: apprt.SurfaceSize) !void {
     if (self.size.screen.equals(new_screen_size)) return;
 
     try self.resize(new_screen_size);
+}
+
+pub fn windowGeometryCallback(self: *Surface, geometry: apprt.WindowGeometry) !void {
+    // Runtimes can emit superfluous events; the geometry is baked into
+    // the renderer's vertex buffer so avoid the trip if unchanged.
+    if (self.window_geometry.eql(&geometry)) return;
+
+    self.window_geometry = geometry;
+
+    _ = self.renderer_thread.mailbox.push(global.io(), .{
+        .window_geometry = .{
+            .x = @floatCast(geometry.x),
+            .y = @floatCast(geometry.y),
+            .width = @floatCast(geometry.width),
+            .height = @floatCast(geometry.height),
+        },
+    }, .{ .forever = {} });
+
+    // Notifying avoids a frame of lag during live window resize.
+    try self.renderer_thread.wakeup.notify();
 }
 
 fn resize(self: *Surface, size: rendererpkg.ScreenSize) !void {

@@ -114,6 +114,15 @@ pub fn Renderer(comptime GraphicsAPI: type) type {
         /// The size of everything.
         size: renderer.Size,
 
+        /// The geometry of this surface within its window. Used by
+        /// window-scoped rendering such as background images.
+        window_geometry: renderer.WindowGeometry = .{
+            .x = 0,
+            .y = 0,
+            .width = 0,
+            .height = 0,
+        },
+
         /// True if the window is focused
         focused: bool,
 
@@ -575,6 +584,7 @@ pub fn Renderer(comptime GraphicsAPI: type) type {
             bg_image_opacity: f32,
             bg_image_position: configpkg.BackgroundImagePosition,
             bg_image_fit: configpkg.BackgroundImageFit,
+            bg_image_scope: configpkg.BackgroundImageScope,
             bg_image_repeat: bool,
             links: link.Set,
             vsync: bool,
@@ -650,6 +660,7 @@ pub fn Renderer(comptime GraphicsAPI: type) type {
                     .bg_image_opacity = config.@"background-image-opacity",
                     .bg_image_position = config.@"background-image-position",
                     .bg_image_fit = config.@"background-image-fit",
+                    .bg_image_scope = config.@"background-image-scope",
                     .bg_image_repeat = config.@"background-image-repeat",
                     .links = links,
                     .vsync = config.@"window-vsync",
@@ -1751,6 +1762,11 @@ pub fn Renderer(comptime GraphicsAPI: type) type {
                     .height = surface_size.height,
                 };
                 self.updateScreenSizeUniforms();
+
+                // Split-scoped bg images use the screen size as their
+                // reference, and it now travels in the vertex buffer rather
+                // than uniforms, so rebuild it.
+                self.updateBgImageBuffer();
             }
 
             // If this frame's target isn't the correct size, or the target
@@ -2104,6 +2120,7 @@ pub fn Renderer(comptime GraphicsAPI: type) type {
                 self.config.bg_image_fit != config.bg_image_fit or
                 self.config.bg_image_position != config.bg_image_position or
                 self.config.bg_image_repeat != config.bg_image_repeat or
+                self.config.bg_image_scope != config.bg_image_scope or
                 self.config.bg_image_opacity != config.bg_image_opacity;
 
             const bg_image_changed =
@@ -2164,6 +2181,28 @@ pub fn Renderer(comptime GraphicsAPI: type) type {
             log.debug("screen size size={}", .{size});
         }
 
+        /// Set the geometry of this surface within its window.
+        pub fn setWindowGeometry(
+            self: *Self,
+            geometry: renderer.WindowGeometry,
+        ) void {
+            self.draw_mutex.lockUncancelable(global.io());
+            defer self.draw_mutex.unlock(global.io());
+
+            if (self.window_geometry.x == geometry.x and
+                self.window_geometry.y == geometry.y and
+                self.window_geometry.width == geometry.width and
+                self.window_geometry.height == geometry.height) return;
+
+            self.window_geometry = geometry;
+
+            // The geometry is baked into the bg image vertex buffer, so
+            // rebuild it if the current scope uses the window.
+            if (self.config.bg_image_scope == .window) self.updateBgImageBuffer();
+
+            self.markDirty();
+        }
+
         /// Update uniforms that are based on the screen size.
         ///
         /// Caller must hold the draw mutex.
@@ -2209,6 +2248,16 @@ pub fn Renderer(comptime GraphicsAPI: type) type {
         ///
         /// Caller must hold the draw mutex.
         fn updateBgImageBuffer(self: *Self) void {
+            const screen = self.size.screen;
+
+            // Window-scoped images are sized/positioned against the window
+            // content area, but only when we have a usable geometry. Without
+            // it (libghostty, non-conforming frontends) fall back to the
+            // historical split behavior so we never scale against a zero
+            // reference.
+            const use_window = self.config.bg_image_scope == .window and
+                self.window_geometry.width > 0 and self.window_geometry.height > 0;
+
             self.bg_image_buffer = .{
                 .opacity = self.config.bg_image_opacity,
                 .info = .{
@@ -2231,6 +2280,14 @@ pub fn Renderer(comptime GraphicsAPI: type) type {
                     },
                     .repeat = self.config.bg_image_repeat,
                 },
+                .window_size = if (use_window)
+                    .{ self.window_geometry.width, self.window_geometry.height }
+                else
+                    .{ @floatFromInt(screen.width), @floatFromInt(screen.height) },
+                .surface_origin = if (use_window)
+                    .{ self.window_geometry.x, self.window_geometry.y }
+                else
+                    .{ 0, 0 },
             };
             // Signal that the buffer was modified.
             self.bg_image_buffer_modified +%= 1;
