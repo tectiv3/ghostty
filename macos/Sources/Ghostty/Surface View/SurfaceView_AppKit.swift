@@ -490,6 +490,31 @@ extension Ghostty {
             contentSize = size
         }
 
+        /// Report this surface's position and size within its window to the core.
+        ///
+        /// Required for window-scoped background images. Coordinates are converted
+        /// to pixels with a top-left origin, matching the shader's coordinate
+        /// space.
+        func updateWindowGeometry() {
+            guard let surface, let window, let container = window.contentView else { return }
+
+            // Convert to window base coordinates (Y-up) so the result is robust
+            // to whether this view or the content view is flipped.
+            let frame = self.convert(self.bounds, to: nil)
+            let contentFrame = container.frame
+            let scale = window.backingScaleFactor
+            let width = contentFrame.width * scale
+            let height = contentFrame.height * scale
+            guard width > 0, height > 0 else { return }
+
+            ghostty_surface_set_window_geometry(
+                surface,
+                (frame.minX - contentFrame.minX) * scale,
+                (contentFrame.maxY - frame.maxY) * scale,
+                width,
+                height)
+        }
+
         private func setSurfaceSize(width: UInt32, height: UInt32) {
             guard let surface = self.surface else { return }
 
@@ -898,6 +923,9 @@ extension Ghostty {
             // When our scale factor changes, so does our fb size so we send that too
             let scaledSize = self.convertToBacking(contentSize)
             setSurfaceSize(width: UInt32(scaledSize.width), height: UInt32(scaledSize.height))
+
+            // The window geometry's pixel scale just changed too.
+            updateWindowGeometry()
         }
 
         override func mouseDown(with event: NSEvent) {

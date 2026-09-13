@@ -179,6 +179,7 @@ class SurfaceScrollView: NSView {
         synchronizeScrollView()
         synchronizeSurfaceView()
         synchronizeCoreSurface()
+        surfaceView.updateWindowGeometry()
     }
 
     // MARK: Scrolling
